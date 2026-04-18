@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hack the Space Day — Submit a Task</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2e3147;
+      --accent: #f97316;
+      --text: #e8eaf0;
+      --muted: #8b8fa8;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--muted); margin-top: 0.5rem; font-size: 1rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      padding: 0.75rem 1rem;
+      transition: border-color 0.15s;
+      outline: none;
+      resize: vertical;
+      min-height: 100px;
+    }
+    textarea:focus { border-color: var(--accent); }
+
+    .field { margin-bottom: 1.5rem; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+    .chip {
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid transparent;
+      opacity: 0.55;
+      transition: opacity 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .chip.selected { opacity: 1; border-color: rgba(255,255,255,0.4); }
+
+    .chip.date-chip            { background: #1e293b; color: #93c5fd; }
+    .chip.date-chip.selected   { background: #1d4ed8; color: #fff; border-color: rgba(255,255,255,0.3); }
+
+    .chip[data-area="General"]        { background: #374151; color: #d1d5db; }
+    .chip[data-area="Kitchen"]        { background: #78350f; color: #fde68a; }
+    .chip[data-area="Woodwork"]       { background: #451a03; color: #fed7aa; }
+    .chip[data-area="Visual Arts"]    { background: #3b0764; color: #e9d5ff; }
+    .chip[data-area="Metalwork"]      { background: #1e293b; color: #94a3b8; }
+    .chip[data-area="Electronics"]    { background: #064e3b; color: #6ee7b7; }
+    .chip[data-area="3D Printing"]    { background: #164e63; color: #a5f3fc; }
+    .chip[data-area="CNC"]            { background: #7f1d1d; color: #fca5a5; }
+    .chip[data-area="Infrastructure"] { background: #1e3a8a; color: #bfdbfe; }
+
+    .loading-chips {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+    button[type="submit"]:hover:not(:disabled) { background: #ea6500; }
+    button[type="submit"]:active:not(:disabled) { transform: scale(0.98); }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show  { transform: translateX(-50%) translateY(0); }
+    .toast.ok    { background: #22c55e; }
+    .toast.error { background: #ef4444; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Hack <span>the Space</span></h1>
+  <p>Got a job that needs doing? Add it to the list.</p>
+</header>
+
+<div class="card">
+  <form id="taskForm">
+    <div class="field" id="dateField">
+      <label>Event date</label>
+      <div class="chips" id="dateChips"><span class="loading-chips">Loading dates…</span></div>
+      <input type="hidden" id="dateInput">
+    </div>
+
+    <div class="field">
+      <label>Area</label>
+      <div class="chips" id="areaChips">
+        <span class="chip" data-area="General">General</span>
+        <span class="chip" data-area="Kitchen">Kitchen</span>
+        <span class="chip" data-area="Woodwork">Woodwork</span>
+        <span class="chip" data-area="Visual Arts">Visual Arts</span>
+        <span class="chip" data-area="Metalwork">Metalwork</span>
+        <span class="chip" data-area="Electronics">Electronics</span>
+        <span class="chip" data-area="3D Printing">3D Printing</span>
+        <span class="chip" data-area="CNC">CNC</span>
+        <span class="chip" data-area="Infrastructure">Infrastructure</span>
+      </div>
+      <input type="hidden" id="areaInput">
+    </div>
+
+    <div class="field">
+      <label>What needs doing?</label>
+      <textarea id="jobInput" placeholder="Describe the task clearly — who, what, where…" maxlength="300" required></textarea>
+    </div>
+
+    <button type="submit" id="submitBtn">Add Task →</button>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ← set this after you deploy the worker
+  const API = 'https://hts.hacmanoperations.workers.dev';
+
+  let selectedDate = null;
+  let selectedArea = null;
+
+  function fmtDate(iso) {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  }
+
+  function showToast(msg, type = 'ok') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    setTimeout(() => el.className = 'toast', 2800);
+  }
+
+  async function buildDateChips() {
+    let dates;
+    try {
+      const r = await fetch(API + '/dates');
+      dates = await r.json();
+    } catch {
+      document.getElementById('dateChips').innerHTML = '<span class="loading-chips">Could not load dates.</span>';
+      return;
+    }
+
+    const container = document.getElementById('dateChips');
+    const field     = document.getElementById('dateField');
+    field.style.display = dates.length <= 1 ? 'none' : '';
+
+    container.innerHTML = '';
+    dates.forEach(iso => {
+      const el = document.createElement('span');
+      el.className   = 'chip date-chip';
+      el.dataset.date = iso;
+      el.textContent  = fmtDate(iso);
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDate = iso;
+        document.getElementById('dateInput').value = iso;
+      });
+      container.appendChild(el);
+    });
+
+    if (dates.length >= 1) {
+      container.querySelector('.date-chip').click();
+    }
+  }
+
+  document.querySelectorAll('.chip[data-area]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip[data-area]').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      selectedArea = chip.dataset.area;
+      document.getElementById('areaInput').value = selectedArea;
+    });
+  });
+
+  document.getElementById('taskForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!selectedDate) { showToast('Please select an event date.', 'error'); return; }
+    if (!selectedArea) { showToast('Please select an area.', 'error'); return; }
+    const job = document.getElementById('jobInput').value.trim();
+    if (!job) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+
+    try {
+      const r = await fetch(API + '/tasks', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ date: selectedDate, area: selectedArea, job }),
+      });
+      if (!r.ok) throw new Error('Server error');
+
+      document.getElementById('jobInput').value = '';
+      document.querySelectorAll('.chip[data-area]').forEach(c => c.classList.remove('selected'));
+      selectedArea = null;
+      document.getElementById('areaInput').value = '';
+      showToast('Task added!', 'ok');
+    } catch {
+      showToast('Could not save — please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  buildDateChips();
+</script>
+</body>
+</html>

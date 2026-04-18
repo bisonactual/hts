@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Board — Manage</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2e3147;
+      --accent: #f97316;
+      --text: #e8eaf0;
+      --muted: #8b8fa8;
+      --radius: 10px;
+    }
+
+    .area-General        { --ac: #6b7280; --ab: #1f2937; --at: #d1d5db; }
+    .area-Kitchen        { --ac: #f59e0b; --ab: #78350f; --at: #fde68a; }
+    .area-Woodwork       { --ac: #b45309; --ab: #451a03; --at: #fed7aa; }
+    .area-Visual-Arts    { --ac: #8b5cf6; --ab: #3b0764; --at: #e9d5ff; }
+    .area-Metalwork      { --ac: #64748b; --ab: #1e293b; --at: #94a3b8; }
+    .area-Electronics    { --ac: #10b981; --ab: #064e3b; --at: #6ee7b7; }
+    .area-3D-Printing    { --ac: #06b6d4; --ab: #164e63; --at: #a5f3fc; }
+    .area-CNC            { --ac: #ef4444; --ab: #7f1d1d; --at: #fca5a5; }
+    .area-Infrastructure { --ac: #3b82f6; --ab: #1e3a8a; --at: #bfdbfe; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .screen-only {}
+    .print-only { display: none; }
+
+    /* ── DATE BAR ────────────────────────────────── */
+    .date-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .date-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .date-tab:hover   { color: var(--text); border-color: #4b5563; }
+    .date-tab.active  { background: #1d4ed8; border-color: #2563eb; color: #fff; }
+
+    .tab-del {
+      opacity: 0.5;
+      font-size: 0.75rem;
+      padding: 1px 3px;
+      border-radius: 3px;
+      transition: opacity 0.1s, background 0.1s;
+    }
+    .tab-del:hover { opacity: 1; background: rgba(255,255,255,0.2); }
+
+    .btn-add-date {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-add-date:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── HEADER ──────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+    header h1 span { color: var(--accent); }
+
+    .controls { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+    select.filter {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    .btn:hover    { filter: brightness(1.15); }
+    .btn-print    { background: var(--accent); color: #fff; }
+    .btn-danger   { background: #7f1d1d; color: #fca5a5; }
+
+    .task-count { color: var(--muted); font-size: 0.9rem; padding: 0.5rem 0 1rem; }
+
+    /* ── TASK GRID ───────────────────────────────── */
+    .task-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .area-badge {
+      background: var(--ab);
+      color: var(--at);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.75rem;
+      border-bottom: 2px solid var(--ac);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .area-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ac); flex-shrink: 0; }
+
+    .job-text  { padding: 0.9rem 1rem; font-size: 0.95rem; line-height: 1.5; flex: 1; }
+    .task-meta { padding: 0 1rem 0.5rem; color: var(--muted); font-size: 0.72rem; }
+
+    .card-actions { display: flex; border-top: 1px solid var(--border); }
+    .card-actions button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-family: inherit;
+      padding: 0.55rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .card-actions button:hover     { background: var(--border); color: var(--text); }
+    .card-actions button.del:hover { background: #7f1d1d33; color: #fca5a5; }
+    .card-actions button + button  { border-left: 1px solid var(--border); }
+
+    /* ── MODALS ──────────────────────────────────── */
+    .modal-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-bg.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 460px;
+    }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 1.25rem; }
+
+    .modal label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .modal select, .modal textarea, .modal input[type="date"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      margin-bottom: 1rem;
+    }
+    .modal input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+    .modal textarea { resize: vertical; min-height: 90px; }
+
+    .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+    .btn-save   { background: var(--accent); color: #fff; }
+    .btn-cancel { background: var(--border); color: var(--text); }
+
+    .empty-state { text-align: center; color: var(--muted); padding: 4rem 1rem; grid-column: 1/-1; }
+    .empty-state svg { margin-bottom: 1rem; opacity: 0.3; }
+
+    /* ── PRINT ───────────────────────────────────── */
+    @media print {
+      @page { size: A4 portrait; margin: 12mm 10mm; }
+
+      body { background: #fff; color: #111; padding: 0; }
+      .screen-only { display: none !important; }
+      .print-only  { display: block; }
+
+      .print-sheet {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(4, 1fr);
+        gap: 6mm;
+        width: 100%;
+        height: 267mm;
+        page-break-after: always;
+      }
+      .print-sheet:last-child { page-break-after: avoid; }
+
+      .print-task {
+        border: 1.5pt solid #ccc;
+        border-radius: 4pt;
+        padding: 5mm 6mm;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        break-inside: avoid;
+      }
+
+      .print-task .pt-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding-bottom: 3mm;
+        margin-bottom: 3mm;
+        border-bottom: 1.5pt solid #ddd;
+        gap: 4mm;
+      }
+
+      .pt-area {
+        font-size: 7pt;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #555;
+        display: flex;
+        align-items: center;
+        gap: 3mm;
+      }
+
+      .pt-date-label { font-size: 6.5pt; color: #888; white-space: nowrap; text-align: right; }
+      .pt-dot { width: 7pt; height: 7pt; border-radius: 50%; flex-shrink: 0; }
+      .pt-job { font-size: 10.5pt; line-height: 1.45; flex: 1; }
+
+      .pt-check {
+        margin-top: 3mm;
+        padding-top: 3mm;
+        border-top: 1pt dashed #ccc;
+        display: flex;
+        align-items: center;
+        gap: 4mm;
+        color: #999;
+        font-size: 7.5pt;
+      }
+
+      .checkbox-sq {
+        width: 14pt; height: 14pt;
+        border: 1.5pt solid #bbb;
+        border-radius: 2pt;
+        flex-shrink: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ SCREEN ═════════════════════════════════════ -->
+<div class="screen-only">
+  <header>
+    <h1>Task <span>Board</span></h1>
+    <div class="controls">
+      <select class="filter" id="areaFilter">
+        <option value="">All areas</option>
+        <option>General</option><option>Kitchen</option><option>Woodwork</option>
+        <option>Visual Arts</option><option>Metalwork</option><option>Electronics</option>
+        <option>3D Printing</option><option>CNC</option><option>Infrastructure</option>
+      </select>
+      <button class="btn btn-print"  onclick="printTasks()">⎙ Print</button>
+      <button class="btn btn-danger" onclick="clearDate()">✕ Clear date</button>
+    </div>
+  </header>
+
+  <div class="date-bar" id="dateBar"></div>
+
+  <p class="task-count" id="taskCount"></p>
+  <div class="task-grid" id="taskGrid"></div>
+</div>
+
+<!-- ══ PRINT OUTPUT ═══════════════════════════════ -->
+<div class="print-only" id="printSheets"></div>
+
+<!-- ══ EDIT TASK MODAL ════════════════════════════ -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <h2>Edit Task</h2>
+    <label>Area</label>
+    <select id="editArea">
+      <option>General</option><option>Kitchen</option><option>Woodwork</option>
+      <option>Visual Arts</option><option>Metalwork</option><option>Electronics</option>
+      <option>3D Printing</option><option>CNC</option><option>Infrastructure</option>
+    </select>
+    <label>What needs doing?</label>
+    <textarea id="editJob" maxlength="300"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-save"   onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD DATE MODAL ═════════════════════════════ -->
+<div class="modal-bg" id="addDateModal">
+  <div class="modal">
+    <h2>Add Event Date</h2>
+    <label>Date</label>
+    <input type="date" id="newDateInput">
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('addDateModal')">Cancel</button>
+      <button class="btn btn-save"   onclick="confirmAddDate()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ← set this after you deploy the worker
+  const API = 'https://hts.hacmanoperations.workers.dev';
+
+  const AREA_COLORS = {
+    'General':'#6b7280','Kitchen':'#f59e0b','Woodwork':'#b45309',
+    'Visual Arts':'#8b5cf6','Metalwork':'#64748b','Electronics':'#10b981',
+    '3D Printing':'#06b6d4','CNC':'#ef4444','Infrastructure':'#3b82f6',
+  };
+
+  let activeDate = null;
+  let editingId  = null;
+  let cachedTasks = [];
+
+  function fmtDate(iso) {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  }
+
+  function fmtTime(dt) {
+    const d = new Date(dt.includes('T') ? dt : dt.replace(' ', 'T') + 'Z');
+    return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function areaClass(area) { return 'area-' + area.replace(/\s+/g, '-'); }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+
+  // ── DATE BAR ──────────────────────────────────
+  async function buildDateBar() {
+    let dates;
+    try {
+      dates = await fetch(API + '/dates').then(r => r.json());
+    } catch {
+      document.getElementById('dateBar').textContent = 'Could not load dates.';
+      return;
+    }
+
+    if (!activeDate || !dates.includes(activeDate)) activeDate = dates[0] || null;
+
+    const bar = document.getElementById('dateBar');
+    bar.innerHTML = '';
+
+    dates.forEach(iso => {
+      const tab = document.createElement('button');
+      tab.className = 'date-tab' + (iso === activeDate ? ' active' : '');
+      tab.innerHTML = `${fmtDate(iso)} <span class="tab-del" title="Delete date">✕</span>`;
+      tab.querySelector('.tab-del').addEventListener('click', e => { e.stopPropagation(); deleteDate(iso); });
+      tab.addEventListener('click', () => { activeDate = iso; buildDateBar(); render(); });
+      bar.appendChild(tab);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-date';
+    addBtn.textContent = '+ Add date';
+    addBtn.onclick = () => document.getElementById('addDateModal').classList.add('open');
+    bar.appendChild(addBtn);
+  }
+
+  async function deleteDate(iso) {
+    const taskCount = cachedTasks.filter(t => t.date === iso).length;
+    const msg = taskCount > 0
+      ? `Delete "${fmtDate(iso)}" and its ${taskCount} task(s)?`
+      : `Delete "${fmtDate(iso)}"?`;
+    if (!confirm(msg)) return;
+    await fetch(`${API}/dates/${iso}`, { method: 'DELETE' });
+    if (activeDate === iso) activeDate = null;
+    await buildDateBar();
+    await render();
+  }
+
+  async function confirmAddDate() {
+    const val = document.getElementById('newDateInput').value;
+    if (!val) return;
+    await fetch(API + '/dates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: val }),
+    });
+    activeDate = val;
+    closeModal('addDateModal');
+    document.getElementById('newDateInput').value = '';
+    await buildDateBar();
+    await render();
+  }
+
+  // ── TASK LIST ─────────────────────────────────
+  async function render() {
+    const areaFilter = document.getElementById('areaFilter').value;
+    let tasks;
+    try {
+      const qs = activeDate ? `?date=${activeDate}` : '';
+      tasks = await fetch(API + '/tasks' + qs).then(r => r.json());
+    } catch {
+      document.getElementById('taskGrid').innerHTML = '<div class="empty-state"><p>Could not load tasks.</p></div>';
+      return;
+    }
+
+    cachedTasks = tasks;
+    const filtered = tasks.filter(t => !areaFilter || t.area === areaFilter);
+
+    const label = activeDate ? fmtDate(activeDate) : 'all dates';
+    document.getElementById('taskCount').textContent = filtered.length === 0 ? ''
+      : `${filtered.length} task${filtered.length !== 1 ? 's' : ''} — ${label}`;
+
+    const grid = document.getElementById('taskGrid');
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/>
+        </svg>
+        <p>${activeDate ? 'No tasks for this date yet.' : 'No tasks.'}</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(t => `
+      <div class="task-card ${areaClass(t.area)}">
+        <div class="area-badge"><span class="area-dot"></span>${t.area}</div>
+        <div class="job-text">${escHtml(t.job)}</div>
+        <div class="task-meta">${fmtTime(t.created)}</div>
+        <div class="card-actions">
+          <button onclick="editTask(${t.id})">✎ Edit</button>
+          <button class="del" onclick="deleteTask(${t.id})">✕ Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── TASK ACTIONS ──────────────────────────────
+  async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+    await render();
+  }
+
+  async function clearDate() {
+    if (!activeDate) return;
+    if (!confirm(`Delete all tasks for ${fmtDate(activeDate)}?`)) return;
+    await fetch(`${API}/tasks?date=${activeDate}`, { method: 'DELETE' });
+    await render();
+  }
+
+  function editTask(id) {
+    const t = cachedTasks.find(t => t.id === id);
+    if (!t) return;
+    editingId = id;
+    document.getElementById('editArea').value = t.area;
+    document.getElementById('editJob').value  = t.job;
+    document.getElementById('editModal').classList.add('open');
+  }
+
+  async function saveEdit() {
+    const area = document.getElementById('editArea').value;
+    const job  = document.getElementById('editJob').value.trim();
+    if (!job) return;
+    await fetch(`${API}/tasks/${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ area, job }),
+    });
+    closeModal('editModal');
+    await render();
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    if (id === 'editModal') editingId = null;
+  }
+
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
+  });
+
+  document.getElementById('areaFilter').addEventListener('change', render);
+
+  // ── PRINT ─────────────────────────────────────
+  function printTasks() {
+    const areaFilter = document.getElementById('areaFilter').value;
+    const tasks = cachedTasks.filter(t =>
+      (!activeDate || t.date === activeDate) && (!areaFilter || t.area === areaFilter)
+    );
+    if (tasks.length === 0) { alert('No tasks to print.'); return; }
+
+    const sheets = [];
+    for (let i = 0; i < tasks.length; i += 8) {
+      const chunk = tasks.slice(i, i + 8);
+      while (chunk.length < 8) chunk.push(null);
+      sheets.push(chunk);
+    }
+
+    document.getElementById('printSheets').innerHTML = sheets.map(chunk => `
+      <div class="print-sheet">
+        ${chunk.map(t => t ? `
+          <div class="print-task">
+            <div class="pt-header">
+              <div class="pt-area">
+                <span class="pt-dot" style="background:${AREA_COLORS[t.area]||'#aaa'}"></span>
+                ${t.area}
+              </div>
+              <div class="pt-date-label">${fmtDate(t.date)}</div>
+            </div>
+            <div class="pt-job">${escHtml(t.job)}</div>
+            <div class="pt-check"><span class="checkbox-sq"></span>Done</div>
+          </div>
+        ` : '<div class="print-task" style="border-color:#f0f0f0"></div>').join('')}
+      </div>
+    `).join('');
+
+    window.print();
+  }
+
+  buildDateBar().then(() => render());
+</script>
+</body>
+</html>

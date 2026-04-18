@@ -1,0 +1,8 @@
+name = "hts-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding      = "DB"
+database_name = "hts-db"
+database_id  = "9f048843-b645-46be-8a12-7cfc18f135d8"
