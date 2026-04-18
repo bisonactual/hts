@@ -1,4 +1,4 @@
-name = "hts-worker"
+name = "hts"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
